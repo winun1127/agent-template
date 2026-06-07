@@ -14,6 +14,8 @@ import {
 } from "@/components/ai-elements/conversation";
 import {
   Message,
+  MessageAction,
+  MessageActions,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -39,7 +41,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
-import { TriangleAlertIcon } from "lucide-react";
+import { CopyCheckIcon, CopyIcon, TriangleAlertIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
@@ -47,6 +49,22 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader } from "./ai-elements/loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const CopyMessageAction = ({
+  text,
+  id,
+  copiedId,
+  onCopy,
+}: {
+  text: string;
+  id: string;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) => (
+  <MessageAction onClick={() => onCopy(id, text)} label="Copy" tooltip="Copy">
+    {copiedId === id ? <CopyCheckIcon /> : <CopyIcon />}
+  </MessageAction>
+);
 
 const PromptInputAttachmentsDisplay = () => {
   const attachments = usePromptInputAttachments();
@@ -84,6 +102,13 @@ export default function Chat({
   const [chatId, setChatId] = useState<string | undefined>(id);
   const [input, setInput] = useState("");
   const pendingMessageRef = useRef<PromptInputMessage | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = useCallback((id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
 
   const { messages, sendMessage, status, error } = useChat({
     id: chatId,
@@ -171,6 +196,26 @@ export default function Chat({
                                   <MessageResponse>{part.text}</MessageResponse>
                                 </MessageContent>
                               </Message>
+                              {message.role === "user" && (
+                                <MessageActions className="justify-end">
+                                  <CopyMessageAction
+                                    text={part.text}
+                                    id={`${message.id}-${i}`}
+                                    copiedId={copiedId}
+                                    onCopy={handleCopy}
+                                  />
+                                </MessageActions>
+                              )}
+                              {message.role === "assistant" && (
+                                <MessageActions>
+                                  <CopyMessageAction
+                                    text={part.text}
+                                    id={`${message.id}-${i}`}
+                                    copiedId={copiedId}
+                                    onCopy={handleCopy}
+                                  />
+                                </MessageActions>
+                              )}
                             </Fragment>
                           );
                         case "dynamic-tool": {
