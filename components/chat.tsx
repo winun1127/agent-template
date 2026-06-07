@@ -40,7 +40,7 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { TriangleAlertIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { useMutation } from "convex/react";
@@ -137,16 +137,43 @@ export default function Chat({
     <div className="max-w-4xl mx-auto p-6 relative size-full overflow-hidden">
       <div className="flex flex-col h-full">
         <Conversation>
-          <ConversationContent>
+          <ConversationContent className="gap-4">
             {messages.length === 0 ? (
               <ConversationEmptyState />
             ) : (
-              messages.map((message) => (
-                <Message from={message.role} key={message.id}>
-                  <MessageContent>
+              messages.map((message) => {
+                return (
+                  <Fragment key={message.id}>
                     {message.parts.map((part, i) => {
                       switch (part.type) {
-                        case "dynamic-tool":
+                        case "file":
+                          return (
+                            <Message
+                              key={`${message.id}-${i}`}
+                              from={message.role}
+                            >
+                              <Attachment
+                                className="group-[.is-user]:ml-auto"
+                                data={{
+                                  ...part,
+                                  id: `${message.id}-file-${i}`,
+                                }}
+                              >
+                                <AttachmentPreview />
+                              </Attachment>
+                            </Message>
+                          );
+                        case "text":
+                          return (
+                            <Fragment key={`${message.id}-${i}`}>
+                              <Message from={message.role}>
+                                <MessageContent>
+                                  <MessageResponse>{part.text}</MessageResponse>
+                                </MessageContent>
+                              </Message>
+                            </Fragment>
+                          );
+                        case "dynamic-tool": {
                           return (
                             <Tool key={`${message.id}-${i}`}>
                               <ToolHeader
@@ -163,19 +190,14 @@ export default function Chat({
                               </ToolContent>
                             </Tool>
                           );
-                        case "text":
-                          return (
-                            <MessageResponse key={`${message.id}-${i}`}>
-                              {part.text}
-                            </MessageResponse>
-                          );
+                        }
                         default:
                           return null;
                       }
                     })}
-                  </MessageContent>
-                </Message>
-              ))
+                  </Fragment>
+                );
+              })
             )}
             {status === "submitted" && (
               <div className="justify-start">
